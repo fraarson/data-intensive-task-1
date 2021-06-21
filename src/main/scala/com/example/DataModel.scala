@@ -1,34 +1,22 @@
 package com.example
 
 trait Signal {
-
-  def getType = this
-
   def health: Boolean
+
+  def sourceSensor: Sensor
 }
 
-class HealthContainer(val isAlive: Boolean)
+case class PressureSignal(override val health: Boolean, override val sourceSensor: Sensor) extends Signal
 
-case class PressureSignal(override val isAlive: Boolean) extends HealthContainer(isAlive)
-  with Signal {
-  override def health: Boolean = isAlive
-}
+case class TemperatureSignal(override val health: Boolean, override val sourceSensor: Sensor) extends Signal
 
-case class TemperatureSignal(override val isAlive: Boolean) extends HealthContainer(isAlive)
-  with Signal {
-  override def health: Boolean = isAlive
-}
+case class HumiditySignal(override val health: Boolean, override val sourceSensor: Sensor) extends Signal
 
-case class HumiditySignal(override val isAlive: Boolean) extends HealthContainer(isAlive)
-  with Signal {
+case class EmptySignal(override val health: Boolean = false, override val sourceSensor: Sensor = new Sensor()) extends Signal
 
-  override def health: Boolean = isAlive
-}
+class SensorLocation(val id: Int = 0, val zipCode: String = "")
 
-class SensorLocation(val id: Int, val zipCode: String)
+class Sensor(val id: Int = 0, location: SensorLocation = new SensorLocation())
 
-class Sensor[T](val id: Int, location: SensorLocation) {
-  def produceSignal(): Signal = ???
-}
-
-class Alarm[ST](val id: Int, val startDateTime: Long, val endDateTime: Long, val signalType: ST)
+class Alarm[S <: Signal](val id: Int = 0, val startDateTime: Long = 0L, val endDateTime: Long = 0L,
+                         val signal: S = EmptySignal(), val sensor: Sensor = new Sensor())
