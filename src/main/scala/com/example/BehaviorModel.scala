@@ -22,10 +22,10 @@ object BehaviorModel {
     new Alarm[Signal](Math.random().intValue(), new Date().getTime, new Date(Int.MaxValue).getTime, signal, signal.sourceSensor)
   }
 
-  def notifyOtherAlarm(): Alarm[EmptySignal] = new Alarm[EmptySignal]()
+  def notifyOtherAlarm(): Alarm[UnknownSignal] = new Alarm[UnknownSignal]()
 
   def apply[S <: Signal](): Behavior[S] = Behaviors.receive { (context, signal) =>
-    context.log.info("Signal type: {}", signal.getClass.getName)
+    context.log.info("Signal type: {}", signal.getClass.getSimpleName)
     context.log.info("Signal health: {}", signal.health)
     signal match {
       case h: HumiditySignal => notifyHumidityAlarm(h)(context.asInstanceOf[ActorContext[HumiditySignal]])

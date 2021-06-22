@@ -21,11 +21,8 @@ object Application extends App {
         path("signal") {
           entity(as[String]) { body =>
             system.log.info(body)
-            if (body.contains("1")) {
-              system ! HumiditySignal(false, new Sensor())
-            } else {
-              system ! TemperatureSignal(true, new Sensor())
-            }
+            val signal = InputObjectReader.read(body)
+            system.log.info(signal.toString)
             complete(StatusCodes.Accepted, HttpEntity.Empty)
           }
         }

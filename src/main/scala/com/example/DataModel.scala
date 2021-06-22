@@ -1,22 +1,76 @@
 package com.example
 
-trait Signal {
+import play.api.libs.functional.syntax.toFunctionalBuilderOps
+import play.api.libs.json._
+
+import scala.util.Try
+
+sealed abstract class Signal {
   def health: Boolean
+
+  def timestamp: Long
 
   def sourceSensor: Sensor
 }
 
-case class PressureSignal(override val health: Boolean, override val sourceSensor: Sensor) extends Signal
+case class PressureSignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
 
-case class TemperatureSignal(override val health: Boolean, override val sourceSensor: Sensor) extends Signal
+case class TemperatureSignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
 
-case class HumiditySignal(override val health: Boolean, override val sourceSensor: Sensor) extends Signal
+case class HumiditySignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
 
-case class EmptySignal(override val health: Boolean = false, override val sourceSensor: Sensor = new Sensor()) extends Signal
+case class UnknownSignal(override val health: Boolean = false, override val timestamp: Long = 0L, override val sourceSensor: Sensor = new Sensor()) extends Signal
 
-class SensorLocation(val id: Int = 0, val zipCode: String = "")
+case class SensorLocation(id: Int = 0, zipCode: String = "")
 
-class Sensor(val id: Int = 0, location: SensorLocation = new SensorLocation())
+case class Sensor(id: Int = 0, location: SensorLocation = SensorLocation())
 
-class Alarm[S <: Signal](val id: Int = 0, val startDateTime: Long = 0L, val endDateTime: Long = 0L,
-                         val signal: S = EmptySignal(), val sensor: Sensor = new Sensor())
+case class Alarm[S <: Signal](id: Int = 0, startDateTime: Long = 0L, endDateTime: Long = 0L,
+                              signal: S = UnknownSignal(), sensor: Sensor = Sensor())
+
+object InputObjectReader {
+
+  implicit val sensorLocationReads: Reads[SensorLocation] = (
+    (JsPath \ "id").read[Int] and
+      (JsPath \ "zipCode").read[String]
+    ) (SensorLocation.apply _)
+
+  implicit val sensorReads: Reads[Sensor] = (
+    (JsPath \ "id").read[Int] and
+      (JsPath \ "location").read[SensorLocation]
+    ) (Sensor.apply _)
+
+  implicit val humidityReads: Reads[HumiditySignal] = (
+    (JsPath \ "health").read[Boolean] and
+      (JsPath \ "timestamp").read[Long] and
+      (JsPath \ "sourceSensor").read[Sensor]
+    ) (HumiditySignal.apply _)
+
+  implicit val pressureReads: Reads[PressureSignal] = (
+    (JsPath \ "health").read[Boolean] and
+      (JsPath \ "timestamp").read[Long] and
+      (JsPath \ "sourceSensor").read[Sensor]
+    ) (PressureSignal.apply _)
+
+  implicit val temperatureSignal: Reads[TemperatureSignal] = (
+    (JsPath \ "health").read[Boolean] and
+      (JsPath \ "timestamp").read[Long] and
+      (JsPath \ "sourceSensor").read[Sensor]
+    ) (TemperatureSignal.apply _)
+
+
+  implicit object SignalReads extends Reads[Signal] {
+    override def reads(json: JsValue): JsResult[Signal] = {
+      (json \ "type").as[String] match {
+        case "Pressure_Signal" => Json.fromJson[PressureSignal](json)
+        case "Temperature_Signal" => Json.fromJson[TemperatureSignal](json)
+        case "Humidity_Signal" => Json.fromJson[HumiditySignal](json)
+        case _ => JsResult.fromTry(Try(UnknownSignal()))
+      }
+    }
+  }
+
+  def read(valueAsString: String): Signal = {
+    Json.fromJson[Signal](Json.parse(valueAsString)).get
+  }
+}
