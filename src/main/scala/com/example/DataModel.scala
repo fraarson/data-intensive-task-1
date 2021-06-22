@@ -1,5 +1,7 @@
 package com.example
 
+import com.fasterxml.jackson.core.JsonParseException
+import play.api.libs.functional.FunctionalBuilder
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 import play.api.libs.json._
 
@@ -19,7 +21,7 @@ case class TemperatureSignal(override val health: Boolean, override val timestam
 
 case class HumiditySignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
 
-case class UnknownSignal(override val health: Boolean = false, override val timestamp: Long = 0L, override val sourceSensor: Sensor = new Sensor()) extends Signal
+case class UnknownSignal(override val health: Boolean = false, override val timestamp: Long = 0L, override val sourceSensor: Sensor = Sensor()) extends Signal
 
 case class SensorLocation(id: Int = 0, zipCode: String = "")
 
@@ -40,23 +42,17 @@ object InputObjectReader {
       (JsPath \ "location").read[SensorLocation]
     ) (Sensor.apply _)
 
-  implicit val humidityReads: Reads[HumiditySignal] = (
+  def signalReader: FunctionalBuilder[Reads]#CanBuild3[Boolean, Long, Sensor] = {
     (JsPath \ "health").read[Boolean] and
       (JsPath \ "timestamp").read[Long] and
       (JsPath \ "sourceSensor").read[Sensor]
-    ) (HumiditySignal.apply _)
+  }
 
-  implicit val pressureReads: Reads[PressureSignal] = (
-    (JsPath \ "health").read[Boolean] and
-      (JsPath \ "timestamp").read[Long] and
-      (JsPath \ "sourceSensor").read[Sensor]
-    ) (PressureSignal.apply _)
+  implicit val humidityReads: Reads[HumiditySignal] = signalReader(HumiditySignal.apply _)
 
-  implicit val temperatureSignal: Reads[TemperatureSignal] = (
-    (JsPath \ "health").read[Boolean] and
-      (JsPath \ "timestamp").read[Long] and
-      (JsPath \ "sourceSensor").read[Sensor]
-    ) (TemperatureSignal.apply _)
+  implicit val pressureReads: Reads[PressureSignal] = signalReader(PressureSignal.apply _)
+
+  implicit val temperatureSignal: Reads[TemperatureSignal] = signalReader(TemperatureSignal.apply _)
 
 
   implicit object SignalReads extends Reads[Signal] {
@@ -71,6 +67,10 @@ object InputObjectReader {
   }
 
   def read(valueAsString: String): Signal = {
-    Json.fromJson[Signal](Json.parse(valueAsString)).get
+    try {
+      Json.fromJson[Signal](Json.parse(valueAsString)).getOrElse(UnknownSignal())
+    } catch {
+      case _: JsonParseException => UnknownSignal()
+    }
   }
 }

@@ -20,7 +20,6 @@ object Application extends App {
       Directives.post {
         path("signal") {
           entity(as[String]) { body =>
-            system.log.info(body)
             val signal = InputObjectReader.read(body)
             system.log.info(signal.toString)
             complete(StatusCodes.Accepted, HttpEntity.Empty)
