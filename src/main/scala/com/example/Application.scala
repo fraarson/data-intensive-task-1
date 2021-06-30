@@ -11,9 +11,9 @@ import scala.io.StdIn
 
 object Application extends App {
 
-  implicit val system: ActorSystem = ActorSystem("signals_alarms_actor_system")
+  implicit val system: ActorSystem = ActorSystem("SignalsAlarmsActorSystem")
 
-  implicit val guardianActor: ActorRef = system.actorOf(Props(new GuardianActor()), "routing_actor")
+  implicit val guardianActor: ActorRef = system.actorOf(Props(new GuardianActor()), "GuardianActor")
 
   val route: Route =
     Directives.concat(

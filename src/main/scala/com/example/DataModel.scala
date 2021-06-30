@@ -15,13 +15,17 @@ sealed abstract class Signal {
   def sourceSensor: Sensor
 }
 
-case class PressureSignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
+case class PressureSignal(override val health: Boolean, override val timestamp: Long,
+                          override val sourceSensor: Sensor) extends Signal
 
-case class TemperatureSignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
+case class TemperatureSignal(override val health: Boolean, override val timestamp: Long,
+                             override val sourceSensor: Sensor) extends Signal
 
-case class HumiditySignal(override val health: Boolean, override val timestamp: Long, override val sourceSensor: Sensor) extends Signal
+case class HumiditySignal(override val health: Boolean, override val timestamp: Long,
+                          override val sourceSensor: Sensor) extends Signal
 
-case class UnknownSignal(override val health: Boolean = false, override val timestamp: Long = 0L, override val sourceSensor: Sensor = Sensor()) extends Signal
+case class UnknownSignal(override val health: Boolean = false, override val timestamp: Long = 0L,
+                         override val sourceSensor: Sensor = Sensor()) extends Signal
 
 case class SensorLocation(id: Int = 0, zipCode: String = "")
 
