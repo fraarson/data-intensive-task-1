@@ -2,7 +2,6 @@ package com.example
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
-import java.util.Date
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 import scala.util.Random
@@ -11,12 +10,11 @@ object ActorModel {
 
   class SensorDeviceActor[S <: Signal](deviceId: Int) extends Actor with ActorLogging {
 
-    val signalsBatch: ListBuffer[S] = new ListBuffer[S]()
-    var currentAlarm: Option[Alarm[S]] = None
-
     val storageActor: ActorRef = context.actorOf(Props(StorageActor), "StorageActor")
+    val signalsBatch: ListBuffer[S] = new ListBuffer[S]()
 
     implicit val executionContext: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
+    implicit val currentAlarm: Option[Alarm[S]] = None
 
     context.system.scheduler.scheduleWithFixedDelay(60.seconds, 60.second) {
       () => {
@@ -24,37 +22,54 @@ object ActorModel {
           val sortedSignalsBatch = signalsBatch.toList.sortBy(it => it.timestamp)
           storageActor ! sortedSignalsBatch
           signalsBatch.clear()
-          checkForAlarms(sortedSignalsBatch) match {
-            case Left(value) => currentAlarm = Option.apply(value)
-            case Right(_) => currentAlarm = None
-          }
+          val (closePreviousAlarm, newAlarm) = checkSignalsForAlarms(sortedSignalsBatch)
           0
         }
-        if (currentAlarm.isDefined) {
+      }
+    }
+
+    def checkSignalsForAlarms(signalsBatch: List[S])(implicit currentAlarm: Option[Alarm[S]]): (Boolean, Option[Alarm[S]]) = {
+      signalsBatch.reduceLeft { (acc: (Option[Alarm[S]], Option[Alarm[S]]), signal: S) => {
+        if (!signal.health && acc._1.isDefined) {
 
         }
+
+        //
+        //
+        //        case p.isLeft =>
+        //          val currentAlarm = p.left.getOrElse(Alarm())
+        //          if (!n.health) {
+        //            if (currentAlarm.startDateTime != 0) {
+        //              Left(Alarm(currentAlarm.id, currentAlarm.startDateTime, n.timestamp, n, n.sourceSensor))
+        //            } else {
+        //              Left(Alarm(Random.nextInt(), n.timestamp, n.timestamp, n, n.sourceSensor))
+        //            }
+        //          } else {
+        //            Right
+        //          }
+        //        case p.isRight =>
+        //          if (!n.health) {
+        //            Left(Alarm(Random.nextInt(), n.timestamp, n.timestamp, n, n.sourceSensor))
+        //          } else {
+        //            Right
+        //          }
+        //      }
+      }
       }
     }
 
-    def checkForAlarms(signalsBatch: List[S]): Either[Alarm[S], Nothing] = {
-      val foundSignal = signalsBatch.find(it => !it.health).orNull
-      if (foundSignal != null) {
-        Alarm(Random.nextInt(), new Date().getTime, 0L, foundSignal, foundSignal.sourceSensor)
-      }
-    }
-
-    def receive: Receive = {
+    override def receive: Receive = {
       case s: S =>
         log.info(s"$deviceId device received signal $s")
         signalsBatch.append(s)
-      case _ => throw new IllegalStateException()
+      case o => log.error("Unsupported type {}", o.getClass)
     }
 
   }
 
   class GuardianActor extends Actor with ActorLogging {
 
-    def receive: Receive = {
+    override def receive: Receive = {
       case signal: Signal =>
         log.info("Signal type: {}", signal.getClass.getSimpleName)
         log.info("Signal health: {}", signal.health)
